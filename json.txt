@@ -1,0 +1,15 @@
+{
+  "name": "Pomodoro Ultra Focus",
+  "short_name": "Pomodoro",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2553/2553391.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
