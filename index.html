@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Pomodoro Ultra Focus</title>
+  
+  <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  
+  <style>
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .blink { animation: blink 1s infinite; }
+    @keyframes flash-green { 0%, 100% { background-color: #f3f4f6; } 50% { background-color: #4ade80; } }
+    .flash-active { animation: flash-green 0.5s 6; }
+    body { touch-action: manipulation; -webkit-user-select: none; transition: background-color 0.3s; }
+    .compact-text { font-size: 10rem !important; line-height: 1; }
+  </style>
+</head>
+<body class="bg-gray-100" id="body-bg">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function App() {
+      const [studyMins, setStudyMins] = useState(25);
+      const [shortMins, setShortMins] = useState(5);
+      const [longMins, setLongMins] = useState(15);
+      
+      const [timeLeft, setTimeLeft] = useState(25 * 60);
+      const [isRunning, setIsRunning] = useState(false);
+      const [mode, setMode] = useState("study");
+      const [cycles, setCycles] = useState(0);
+      const [isCompact, setIsCompact] = useState(false);
+      const [isFlashing, setIsFlashing] = useState(false);
+      
+      const timerRef = useRef(null);
+
+      // MEMÓRIA: Só altera o tempo se o cronômetro estiver parado e for um novo ciclo
+      useEffect(() => {
+        if (!isRunning && timeLeft === 0) {
+          const m = mode === "study" ? studyMins : (mode === "short" ? shortMins : longMins);
+          setTimeLeft(m * 60);
+        }
+      }, [mode, isRunning]);
+
+      useEffect(() => {
+        if (isRunning) {
+          timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+              if (prev <= 1) {
+                clearInterval(timerRef.current);
+                handleEnd();
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        } else {
+          clearInterval(timerRef.current);
+        }
+        return () => clearInterval(timerRef.current);
+      }, [isRunning]);
+
+      const handleEnd = () => {
+        setIsRunning(false);
+        setIsFlashing(true);
+        setTimeout(() => setIsFlashing(false), 3000);
+        
+        if (mode === "study") {
+          const nextCycles = cycles + 1;
+          setCycles(nextCycles);
+          setMode(nextCycles % 4 === 0 ? "long" : "short");
+        } else {
+          setMode("study");
+        }
+      };
+
+      const format = (s) => {
+        const m = Math.floor(s / 60).toString().padStart(2, '0');
+        const sec = (s % 60).toString().padStart(2, '0');
+        return `${m}:${sec}`;
+      };
+
+      const motivationalMessages = [
+        "Ciclo 1: Aquecimento concluído! 🔥",
+        "Ciclo 2: Foco total, você está rendendo! 🧠",
+        "Ciclo 3: Quase lá, mantenha a constância! 🚀",
+        "Ciclo 4: Missão cumprida! Hora da Pausa Longa! 🏆"
+      ];
+
+      const isCritical = timeLeft <= 900 && mode === "study"; // 15 min
+
+      return (
+        <div className={`min-h-screen flex flex-col items-center justify-center p-4 ${isFlashing ? 'flash-active' : ''}`}>
+          <div className={`w-full transition-all duration-500 bg-white rounded-3xl shadow-2xl border-t-8 border-blue-600 ${isCompact ? 'max-w-xs p-4' : 'max-w-md p-8'}`}>
+            
+            {!isCompact && (
+              <h1 className="text-center text-gray-400 font-bold uppercase tracking-widest mb-2">
+                {mode === "study" ? "Sessão de Foco" : "Descanso"}
+              </h1>
+            )}
+            
+            <div className={`text-center font-mono font-bold transition-all ${isCompact ? 'compact-text my-2' : 'text-7xl my-8'} ${isCritical ? 'text-red-600 blink' : 'text-gray-800'}`}>
+              {format(timeLeft)}
+            </div>
+
+            <div className={`flex gap-2 ${isCompact ? 'flex-col' : 'mb-8'}`}>
+              <button onClick={() => setIsRunning(!isRunning)} className={`flex-1 py-4 rounded-2xl font-bold text-white shadow-md active:scale-95 ${isRunning ? 'bg-yellow-500' : 'bg-green-500'}`}>
+                {isRunning ? "PAUSAR" : "INICIAR"}
+              </button>
+              
+              {!isCompact && (
+                <button onClick={() => {setIsRunning(false); setTimeLeft(studyMins * 60); setCycles(0); setMode("study")}} className="px-4 py-4 bg-gray-200 rounded-2xl font-bold text-gray-600 active:scale-95">
+                  RESET
+                </button>
+              )}
+              
+              <button onClick={() => setIsCompact(!isCompact)} className="px-4 py-4 bg-blue-100 text-blue-600 rounded-2xl font-bold active:scale-95">
+                {isCompact ? "MAX" : "MIN"}
+              </button>
+            </div>
+
+            {!isCompact && (
+              <>
+                <div className="space-y-3 bg-gray-50 p-4 rounded-2xl mb-6">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-400 uppercase">Estudo (min)</span>
+                    <input type="number" value={studyMins} onChange={e => setStudyMins(Number(e.target.value))} className="w-14 text-center bg-white border rounded-lg font-bold text-blue-600" />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-400 uppercase">Pausa Curta</span>
+                    <input type="number" value={shortMins} onChange={e => setShortMins(Number(e.target.value))} className="w-14 text-center bg-white border rounded-lg font-bold text-blue-600" />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-400 uppercase">Pausa Longa</span>
+                    <input type="number" value={longMins} onChange={e => setLongMins(Number(e.target.value))} className="w-14 text-center bg-white border rounded-lg font-bold text-blue-600" />
+                  </div>
+                </div>
+
+                <div className="relative pt-1">
+                  <div className="flex mb-2 items-center justify-between">
+                    <div className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                      Progresso do Ciclo
+                    </div>
+                    <div className="text-right text-xs font-semibold text-blue-600">
+                      {cycles % 4}/4
+                    </div>
+                  </div>
+                  <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-100">
+                    <div style={{ width: `${(cycles % 4 || (cycles > 0 && mode !== 'study' ? 4 : 0)) * 25}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"></div>
+                  </div>
+                  <p className="text-center text-sm text-blue-800 font-medium italic">
+                    {cycles > 0 ? motivationalMessages[(cycles - 1) % 4] : "Pronto para começar?"}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
